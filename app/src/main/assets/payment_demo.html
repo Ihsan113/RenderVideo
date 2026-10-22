@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo Animasi Pembayaran</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#090d16;color:#fff;font-family:Arial,sans-serif}
+body{display:flex;justify-content:center;align-items:center;padding:16px}
+.panel{background:#151d2a;border:1px solid #26314a;border-radius:24px;width:min(100%,350px);height:440px;padding:26px 22px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;box-shadow:0 22px 48px #0007}
+.card{background:linear-gradient(135deg,#6366f1,#a855f7);width:220px;height:140px;max-width:100%;border-radius:16px;padding:22px;margin-top:6px;box-shadow:0 12px 30px #6366f144;transition:transform .8s cubic-bezier(.34,1.56,.64,1),opacity .6s}
+.chip{width:32px;height:24px;border-radius:6px;background:#f1f5f9b0;margin-bottom:28px}
+.number{font-size:14px;letter-spacing:2px;white-space:nowrap}
+.status{width:80px;height:80px;position:relative;display:grid;place-items:center}
+.spinner{border-radius:50%;width:66px;height:66px;border:4px solid #fff2;border-left-color:#38bdf8;opacity:0;position:absolute}
+.ring{border-radius:50%;border:2px solid #38bdf8;width:80px;height:80px;position:absolute;opacity:0}
+.check{position:absolute;width:70px;height:70px;opacity:0;transition:opacity .5s,transform .5s;transform:scale(.5)}
+.check circle,.check path{stroke:#22c55e;stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.progress{height:7px;width:100%;border-radius:6px;background:#ffffff18;opacity:0;overflow:hidden}
+.fill{height:100%;width:0;background:linear-gradient(90deg,#38bdf8,#22c55e)}
+button{border:0;background:#38bdf8;color:#0f172a;font-size:15px;font-weight:bold;width:100%;padding:15px 4px;border-radius:12px}
+.playing .spinner{opacity:1;animation:spin 1s linear infinite}.playing .progress{opacity:1}.playing .fill{animation:fill 10s linear forwards}
+.scanning .ring{opacity:1;animation:pulse 1.2s ease-in-out infinite alternate}
+.done .spinner,.done .ring{display:none}.done .check{opacity:1;transform:scale(1)}.done button{background:#22c55e;color:#fff}
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes fill{to{width:100%}}@keyframes pulse{0%{transform:scale(.8);opacity:.3}100%{transform:scale(1.2);opacity:1}}
+</style>
+</head>
+<body>
+<main id="panel" class="panel">
+  <div class="card" id="card"><div class="chip"></div><div class="number">•••• •••• •••• 4242</div></div>
+  <div class="status"><div class="spinner"></div><div class="ring"></div><svg class="check" viewBox="0 0 52 52"><circle cx="26" cy="26" r="23"/><path d="M14.1 27.2l7.1 7.2 16.7-16.8"/></svg></div>
+  <div class="progress"><div class="fill"></div></div>
+  <button id="payBtn" onclick="start10SecPayment()">Bayar Sekarang</button>
+</main>
+<script>
+function start10SecPayment(){
+ const p=document.querySelector('#panel'),c=document.querySelector('#card'),b=document.querySelector('#payBtn');
+ if(b.disabled)return;b.disabled=true;b.textContent='Menghubungkan...';p.classList.add('playing');c.style.transform='translateY(-15px) scale(.95)';
+ setTimeout(()=>{c.style.transform='translateY(10px) scale(.85) rotateX(20deg)';c.style.opacity='.7';b.textContent='Memverifikasi Kartu...'},3000);
+ setTimeout(()=>{p.classList.add('scanning');b.textContent='Otorisasi Bank...'},4500);
+ setTimeout(()=>{p.classList.remove('playing','scanning');p.classList.add('done');c.style.transform='none';c.style.opacity='1';b.textContent='Pembayaran Berhasil!'},7500);
+}
+</script>
+</body></html>
