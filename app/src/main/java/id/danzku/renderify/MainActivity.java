@@ -17,6 +17,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.HorizontalScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,7 +33,7 @@ public class MainActivity extends Activity {
     private static final int MAX_HTML_BYTES = 1024 * 1024;
     private EditText htmlEditor, durationInput, scriptInput;
     private WebView preview;
-    private TextView fileLabel, statusLabel;
+    private TextView fileLabel, statusLabel, capabilityStatus;
     private int selectedQuality = 720;
     private int selectedFps = 30;
     private String selectedRatio = "9:16";
@@ -168,6 +169,10 @@ public class MainActivity extends Activity {
         settings.addView(Ui.text(this, "Kualitas video", 14, Ui.WHITE, true));
         settings.addView(Ui.spacer(this, 8));
         settings.addView(qualityButtons());
+        settings.addView(Ui.spacer(this, 6));
+        settings.addView(Ui.text(this,
+                "2K/4K adalah ukuran file output. PixelCopy dari WebView yang tampak di layar " +
+                "akan diperbesar; belum menjamin detail 2K/4K asli.", 11, Ui.MUTED, false));
         settings.addView(Ui.spacer(this, 15));
         settings.addView(Ui.text(this, "Rasio video", 14, Ui.WHITE, true));
         settings.addView(Ui.spacer(this, 8));
@@ -176,12 +181,31 @@ public class MainActivity extends Activity {
         settings.addView(Ui.text(this, "Frame rate", 14, Ui.WHITE, true));
         settings.addView(Ui.spacer(this, 8));
         settings.addView(fpsButtons());
+        settings.addView(Ui.spacer(this, 6));
+        settings.addView(Ui.text(this,
+                "60 FPS adalah target file video; animasi dapat mengulang frame jika HP tidak cukup cepat.",
+                11, Ui.MUTED, false));
         settings.addView(Ui.spacer(this, 15));
         settings.addView(Ui.text(this, "Mode encoder", 14, Ui.WHITE, true));
         settings.addView(Ui.spacer(this, 8));
         settings.addView(encoderButtons());
         settings.addView(Ui.spacer(this, 6));
-        settings.addView(Ui.text(this, "Auto memprioritaskan hardware lalu beralih ke software jika tersedia.", 11, Ui.MUTED, false));
+        settings.addView(Ui.text(this, "Auto mencoba hardware kemudian software; input GPU/Surface maupun YUV/CPU.", 11, Ui.MUTED, false));
+        settings.addView(Ui.spacer(this, 14));
+        Button probeButton = Ui.button(this, "⌕  Periksa encoder HP", false);
+        settings.addView(probeButton, Ui.lp(this, -1, 47));
+        settings.addView(Ui.spacer(this, 8));
+        capabilityStatus = Ui.text(this,
+                "Ketuk untuk melihat kandidat H.264 sesuai resolusi, FPS, dan mode terpilih.",
+                11, Ui.MUTED, false);
+        settings.addView(capabilityStatus);
+        probeButton.setOnClickListener(v -> {
+            int w = "16:9".equals(selectedRatio) ? selectedQuality * 16 / 9 : selectedQuality;
+            int h = "9:16".equals(selectedRatio) ? selectedQuality * 16 / 9 : selectedQuality;
+            if ("1:1".equals(selectedRatio)) w = h = selectedQuality;
+            try { capabilityStatus.setText(GpuFrameEncoder.diagnose(w, h, selectedFps, selectedEncoder)); }
+            catch (Exception e) { capabilityStatus.setText("Tidak bisa memeriksa codec: " + e.getMessage()); }
+        });
         settings.addView(Ui.spacer(this, 15));
         settings.addView(Ui.text(this, "JavaScript pemicu animasi (opsional)", 14, Ui.WHITE, true));
         settings.addView(Ui.spacer(this, 7));
@@ -203,7 +227,7 @@ public class MainActivity extends Activity {
         statusLabel.setGravity(Gravity.CENTER);
         page.addView(statusLabel);
         page.addView(Ui.spacer(this, 14));
-        TextView footer = Ui.text(this, "Renderify 2.0  •  Danzku Studio\nVideo tersimpan di Movies/Renderify", 11, Ui.MUTED, false);
+        TextView footer = Ui.text(this, "Renderify 3.0  •  Danzku Studio\nVideo tersimpan di Movies/Renderify", 11, Ui.MUTED, false);
         footer.setGravity(Gravity.CENTER);
         page.addView(footer);
     }
@@ -222,24 +246,28 @@ public class MainActivity extends Activity {
     }
 
     private View qualityButtons() {
+        // Scroll horizontally instead of squeezing five quality presets into a narrow phone screen.
+        HorizontalScrollView scroll = new HorizontalScrollView(this);
+        scroll.setHorizontalScrollBarEnabled(false);
         LinearLayout row = Ui.horizontal(this);
-        String[] labels = {"540p", "720p", "1080p"};
-        int[] values = {540, 720, 1080};
-        Button[] bs = new Button[3];
-        for (int i = 0; i < 3; i++) {
+        String[] labels = {"540p", "720p", "1080p", "QHD 2K", "4K UHD"};
+        int[] values = {540, 720, 1080, 1440, 2160};
+        Button[] bs = new Button[labels.length];
+        for (int i = 0; i < labels.length; i++) {
             final int index = i;
             Button b = Ui.button(this, labels[i], i == 1);
-            b.setTextSize(11);
+            b.setTextSize(12);
             bs[i] = b;
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 46), 1);
-            if (i > 0) lp.setMargins(Ui.dp(this, 5), 0, 0, 0);
+            LinearLayout.LayoutParams lp = Ui.lp(this, 90, 46);
+            if (i > 0) lp.leftMargin = Ui.dp(this, 7);
             row.addView(b, lp);
             b.setOnClickListener(v -> {
                 selectedQuality = values[index];
                 for (int j = 0; j < bs.length; j++) setSelected(bs[j], j == index);
             });
         }
-        return row;
+        scroll.addView(row);
+        return scroll;
     }
 
     private View ratioButtons() {

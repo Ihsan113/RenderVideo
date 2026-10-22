@@ -69,7 +69,8 @@ public class RenderActivity extends Activity {
             int requestedFps = getIntent().getIntExtra(EXTRA_FPS, 30);
             fps = requestedFps == 24 || requestedFps == 60 ? requestedFps : 30;
             int requestedQuality = getIntent().getIntExtra(EXTRA_QUALITY, 720);
-            quality = requestedQuality == 540 || requestedQuality == 1080 ? requestedQuality : 720;
+            quality = requestedQuality == 540 || requestedQuality == 1080 ||
+                    requestedQuality == 1440 || requestedQuality == 2160 ? requestedQuality : 720;
             outWidth = "16:9".equals(ratio) ? quality * 16 / 9 : quality;
             outHeight = "9:16".equals(ratio) ? quality * 16 / 9 : quality;
             if ("1:1".equals(ratio)) outWidth = outHeight = quality;
@@ -128,8 +129,14 @@ public class RenderActivity extends Activity {
         webView.getLocationInWindow(pos);
         Rect capture = new Rect(pos[0], pos[1], pos[0] + webView.getWidth(), pos[1] + webView.getHeight());
         try {
+            int desiredWidth = outWidth, desiredHeight = outHeight;
+            int[] aligned = GpuFrameEncoder.compatibleSize(outWidth, outHeight, fps, encoderMode);
+            outWidth = aligned[0];
+            outHeight = aligned[1];
             outputUri = makeOutputUri();
-            renderStatus.setText("Menyiapkan encoder GPU…");
+            renderStatus.setText((outWidth != desiredWidth || outHeight != desiredHeight)
+                    ? ("Menyesuaikan alignment codec: " + outWidth + "×" + outHeight)
+                    : "Menyiapkan encoder H.264…");
             engine = new FrameRenderEngine(this, capture, outputUri, outWidth, outHeight,
                     duration, fps, encoderMode, new FrameRenderEngine.Callback() {
                 @Override public void onReady(String codecName) {
@@ -197,7 +204,8 @@ public class RenderActivity extends Activity {
         page.addView(Ui.spacer(this, 14));
         TextView desc = Ui.text(this,
                 outWidth + " × " + outHeight + "  •  " + fps + " FPS  •  " + duration + " detik\n" +
-                "Tanpa izin perekaman layar\nMovies/Renderify", 12, Ui.MUTED, false);
+                "Tanpa izin perekaman layar\nMovies/Renderify\n" +
+                "Sumber frame: WebView tampil di layar (resolusi tinggi dapat berupa upscale)", 12, Ui.MUTED, false);
         desc.setGravity(Gravity.CENTER);
         page.addView(desc);
         page.addView(Ui.spacer(this, 8));

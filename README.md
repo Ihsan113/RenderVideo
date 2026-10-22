@@ -1,95 +1,68 @@
-# Renderify 2.0 — HTML → MP4 (Android, offline)
+# Renderify v3.0 — HTML → MP4 offline on Android
 
-**Android Studio / GitHub Actions project, NOT a compiled APK.**
+**Source project (not a precompiled APK).** Build the Android app with the included GitHub Actions workflow. No server account or screen-recording permission is used.
 
-Paste HTML into the editor or choose an `.html` file. Preview it locally, pick the
-aspect ratio (9:16, 16:9, 1:1), output size (540p, 720p, 1080p), frame rate
-(24/30/60 FPS), duration (2–120 seconds), and encoder preference (Auto,
-Hardware, Software). Start the export. MP4/H.264 files are saved in
-`Movies/Renderify` via Android MediaStore. The built-in demo animates a 10-second payment.
+## What's improved in v3
 
-## What's changed from v1
+- Repairs the H.264 discovery path that previously rejected codecs because they were not labelled hardware-accelerated or did not accept a Surface.
+- Probes **all** advertised AVC encoders and tries candidates in order. Auto prefers a non-software GPU/Surface encoder, then other available AVC candidates. Hardware mode excludes software-only codecs; Software mode uses codecs declared software-only by Android.
+- Supports `COLOR_FormatSurface` input through OpenGL ES/EGL, plus YUV420 **planar**, **semiplanar**, and **flexible** input through `MediaCodec` buffer/image APIs when available.
+- Cleans up a failed EGL initialization before trying another encoder.
+- Adds a **Periksa encoder HP** button, displaying candidate codec names for the chosen size, frame rate, and encoder mode. These are capability *claims*, not guarantees of successful encoding.
+- Handles limited **width/height alignment** differences of at most 32 pixels and 1% aspect-ratio difference. No automatic large quality downgrade.
+- Adds **QHD / 2K (1440p)** and **4K UHD (2160p)** alongside 540p, 720p, and 1080p; keeps 24, 30, and **60 FPS**, three aspect ratios, and the editor's HTML import and live preview.
+- Improved errors for missing encoder, codec configuration, and insufficient frame memory.
 
-- Replaced the **MediaProjection / MediaRecorder screen-recording service** with
-  frame capture of **only Renderify's own visible WebView**, using Android
-  `PixelCopy.request(Window, Rect, Bitmap, ...)`.
-- Encodes via `Bitmap → OpenGL ES 2 texture → EGL input surface →
-  MediaCodec (hardware H.264 where available) → MediaMuxer → MP4`.
-- No screen recording dialog. No screen/mediaProjection/Internet permission.
-- Keeps rendering locally in the foreground; leaving this screen cancels export.
-- Auto prefers a hardware H.264 encoder, with software fallback if the device
-  offers a compatible surface-input encoder. The Hardware preference also
-  falls back to software for compatibility; the Software preference selects
-  a non-hardware encoder. A codec may not support every size/FPS.
-- Correctly renamed the former custom `setImmersive` helper to
-  `applyFullscreenMode` to avoid an Android Activity Java conflict.
-- Preview, paste editor, file chooser and example HTML remain available.
+## Render pipeline
 
-## How to build through GitHub Actions
-
-1. Extract the ZIP **first**. Upload its **contents** to your repo root
-   (not inside another nested folder). The root should contain `app/`,
-   `.github/workflows/build-apk.yml`, `settings.gradle`, etc.
-2. Commit and push to `main`, or visit **Actions → Build Android APK → Run workflow**.
-3. On successful completion download artifact `Renderify-Android-debug`, unzip
-   it and install `app-debug.apk`.
-
-This project uses Java 17, Android Gradle Plugin 8.10.1, Gradle 8.11.1,
-compile/target SDK 35, min SDK 29, and no third-party runtime dependencies.
-
-## Render behavior and limitations (important)
-
-- **Not a full headless desktop Chromium renderer.** Android WebView is
-  Chromium-based, rendered *on the Android display* and sampled using PixelCopy.
-  This is not Playwright and is not desktop Chromium's deterministic virtual-time capture.
-- **Not FFmpeg.** We intentionally use Android's native `MediaCodec + MediaMuxer`
-  instead of bundling FFmpeg for H.264 hardware acceleration, smaller APK,
-  and simpler builds. An FFmpeg native pipeline for optional post-processing
-  could be a separate later feature, but is not in this release.
-- A **GPU assists WebView drawing and OpenGL transfer**, but PixelCopy involves
-  an intermediate Bitmap and CPU/GPU memory traffic. It is not zero-copy.
-- Frame capture is **real-time**, not frame-perfect deterministic rendering.
-  If the phone cannot sample every requested frame at the requested rate,
-  the last sampled image is **repeated** to fill skipped frame indices, keeping
-  nominal MP4 duration and CFR. Fast animation may appear to stutter.
-- Output *pixel dimensions* can be 1080p, but source detail comes from the
-  physical size of the visible WebView; upscaling cannot create extra detail.
-  Landscape mode rotates the activity for a larger visible viewport.
-- HTML supports inline CSS/JavaScript. Local files referenced by relative paths,
-  external URLs, remote fonts, and network media are not imported or fetched.
-  The file picker imports the HTML **text only**, maximum 1 MB.
-- Autoplay CSS animation starts at page load; JS actions triggered via the
-  custom script start just before capture. Captured first frame timing is
-  approximate; page load plus capture-start setup introduces a small offset.
-- WebGL, video tags, DRM, high frame rate, 1080p/60, and heavy animations are
-  **device-dependent** and require testing on real hardware.
-- Audio tracks and transparent MP4 are **not supported** in this initial version.
-- For privacy, Renderify cancels capture if it moves to background; keep screen
-  on and application visible throughout the export.
-
-## Source tree
-
-```
-app/src/main/java/id/danzku/renderify/
-  MainActivity.java       HTML editor, import, preview, render settings
-  RenderActivity.java     Full-screen WebView, output and lifecycle
-  FrameRenderEngine.java  PixelCopy sampler and timing
-  GpuFrameEncoder.java    EGL/OpenGL ES texture → H.264 → MP4
-  Ui.java                 Responsive Android UI helpers
-app/src/main/assets/payment_demo.html
-.github/workflows/build-apk.yml
-validate_project.py
-branding/
+```text
+HTML/CSS/JS → Chromium-based WebView (visible app window)
+           → PixelCopy (own WebView region only)
+           → Bitmap at requested output pixel dimensions
+           → OpenGL/EGL + H.264 Surface input (preferred)
+              OR CPU YUV420 conversion + H.264 ByteBuffer input
+           → Android MediaCodec + MediaMuxer
+           → Movies/Renderify/*.mp4
 ```
 
-## Testing checklist
+This app deliberately uses native Android **MediaCodec + MediaMuxer** instead of bundling FFmpeg. It does **not** use MediaProjection or screen recording and requires no Internet permission. Android 10+ is required.
 
-Run `python3 validate_project.py`; GitHub Actions compiles the Java code to an APK.
-On a real **Android 10+** phone, test 9:16 720p/30 then 16:9 540p/24 then
-1:1 1080p/30 and 1080p/60 if supported. Confirm exported MP4 playback,
-length, rotation, no view overlays, output `Movies/Renderify`, interruption on
-Back/Home, software fallback, and support for the chosen HTML animation.
+## Resolution and performance limitations
 
-**Build and device runtime have not been verified in the authoring environment**
-(no Android SDK/emulator connected); successful pre-build checks are not a
-claim that it is already installable or that every target phone is supported.
+**Important:** 2K and 4K are *encoded output dimensions*, **not guaranteed 2K/4K native HTML detail**. The source WebView is a visible surface sized according to the phone's screen. PixelCopy may upscale it. The render currently runs in wall-clock time; if the phone can't capture and encode in time, video frames can repeat. This is not a deterministic frame-by-frame desktop Chromium renderer. **4K/60 is a conditional capability, not a promise**; some phones will fail codec checks, run out of memory, overheat, or produce choppy animation. Software mode can be much slower, especially at 1080p and above.
+
+The app does not import linked external HTML assets or load internet resources. Prefer inline CSS/JS and data URLs; HTML file size max 1 MB. Audio is not rendered. The H.264 output is opaque MP4.
+
+## Build with GitHub Actions
+
+1. Extract this ZIP on your device or PC, then upload **the contents** to the root of `Ihsan113/RenderVideo` (not into an extra folder). Preserve `.github/workflows/build-apk.yml`.
+2. Commit changes and allow **Actions → Build Android APK** to run, or trigger manually with **Run workflow**.
+3. If successful, download the workflow **Artifacts → Renderify-Android-debug**, unzip and install `app-debug.apk`.
+4. App version in this ZIP: `3.0.0` (`versionCode=3`).
+
+Because GitHub's browser uploader doesn't delete old tracked files, remove `app/src/main/java/id/danzku/renderify/CaptureService.java` from your GitHub repository if it remains. The workflow also removes that obsolete file *from the build runner* before validation. Read `MIGRATION_V1_TO_V2.md`.
+
+CI runs Python structural checks and source-level regression tests before Gradle APK compilation.
+
+## First on-device tests
+
+1. Tap **Periksa encoder HP** with **720p, 30 FPS, 9:16, Auto**; verify codec names appear.
+2. Render the included payment demo at **720p / 30 FPS / Auto**.
+3. Try **540p / Hardware**, **720p / Software**, then **1080p / Auto**.
+4. If those work, try **1440p/30** and **2160p/30**; only then try **2160p/60** if diagnostics list capable encoders.
+5. Open the saved MP4 in Gallery, inspect duration, aspect ratio, text sharpness, animation timing, and any repeated frames.
+6. If a codec fails, share the exact error text and **Periksa encoder HP** result, along with Android version and phone chipset; vendor MediaCodec implementations vary.
+
+## Project files
+
+- `MainActivity.java`: HTML paste/file picker, preview, quality, aspect, FPS, codec selection, and diagnostics.
+- `RenderActivity.java`: WebView render screen, timing trigger, MediaStore output, and lifecycle.
+- `FrameRenderEngine.java`: PixelCopy and controlled video presentation timestamps.
+- `GpuFrameEncoder.java`: codec enumeration, candidate fallback, EGL/OpenGL, YUV420, H.264, muxing.
+- `tests/test_source_contract.py`: local source regression tests.
+- `validate_project.py`: structural/source verification (not a Java compiler).
+- `.github/workflows/build-apk.yml`: build via Java 17, Gradle 8.11.1, Android plugin 8.10.1.
+
+## Test honesty
+
+Source-level validation is not equivalent to Gradle compilation. **No APK compilation, emulator run, or hardware encoding test was performed here**, because Android SDK and a connected device are unavailable in this environment. The GitHub Action must prove compilation, and an actual Android phone must verify render output.

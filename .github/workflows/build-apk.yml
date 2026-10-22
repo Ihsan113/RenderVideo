@@ -28,8 +28,19 @@ jobs:
         with:
           gradle-version: '8.11.1'
 
+      # GitHub's web uploader overwrites files but does not delete old ones.
+      # This explicitly removes the MediaProjection implementation from v1.
+      - name: Remove obsolete v1 screen recorder
+        run: python3 scripts/clean_legacy_sources.py
+
       - name: Validate source structure
         run: python3 validate_project.py
+
+      - name: Run encoder regression checks
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Run codec source regression tests
+        run: python3 -m unittest discover -s tests -v
 
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug

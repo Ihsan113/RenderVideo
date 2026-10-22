@@ -66,11 +66,14 @@ final class FrameRenderEngine {
         worker.post(() -> {
             try {
                 if (cancelled) { complete(false, "Render dibatalkan"); return; }
-                copyTarget = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+                // Validate/initialize the codec before allocating a potentially large 4K Bitmap.
                 encoder = new GpuFrameEncoder(activity.getContentResolver(), output,
                         width, height, fps, mode);
                 selectedCodec = encoder.start();
+                copyTarget = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
                 main.post(() -> { if (!cancelled) callback.onReady(selectedCodec); });
+            } catch (OutOfMemoryError oom) {
+                complete(false, "RAM tidak cukup untuk frame " + width + "×" + height + ". Coba resolusi lebih rendah.");
             } catch (Exception ex) {
                 complete(false, "Gagal menyiapkan encoder: " + ex.getMessage());
             }
@@ -127,6 +130,8 @@ final class FrameRenderEngine {
                 main.post(() -> { if (!finished) callback.onProgress(n, totalFrames); });
             }
             requestNext();
+        } catch (OutOfMemoryError oom) {
+            complete(false, "RAM tidak cukup saat mengolah frame video. Coba resolusi/FPS lebih rendah.");
         } catch (Exception ex) {
             complete(false, "Gagal membuat frame MP4: " + ex.getMessage());
         }

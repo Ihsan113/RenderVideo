@@ -13,6 +13,7 @@ required = [
     'app/src/main/res/values/styles.xml',
     'app/src/main/res/drawable/ic_launcher_logo.xml',
     'app/src/main/res/drawable/ic_logo_small.xml',
+    'scripts/clean_legacy_sources.py',
 ]
 required += [str((src / f'{name}.java').relative_to(root)) for name in
              ('MainActivity', 'RenderActivity', 'GpuFrameEncoder', 'FrameRenderEngine', 'Ui')]
@@ -37,21 +38,26 @@ render = (src/'RenderActivity.java').read_text()
 frames = (src/'FrameRenderEngine.java').read_text()
 codec = (src/'GpuFrameEncoder.java').read_text()
 assert all(x in main for x in ('ACTION_OPEN_DOCUMENT', 'htmlEditor', 'updatePreview',
-                               'setBlockNetworkLoads(true)', 'EXTRA_RATIO', 'EXTRA_ENCODER', '60 FPS'))
+                               'setBlockNetworkLoads(true)', 'EXTRA_RATIO', 'EXTRA_ENCODER', '60 FPS', '1440', '2160', 'Periksa encoder HP'))
 assert all(x in render for x in ('applyFullscreenMode', 'makeOutputUri', 'FrameRenderEngine',
                                  'getLocationInWindow', 'IS_PENDING'))
 assert 'PixelCopy.request' in frames and 'totalFrames' in frames and 'encoder.frame' in frames
 assert all(x in codec for x in ('MediaCodec', 'MediaMuxer', 'EGL14', 'EGLExt', 'GLUtils',
-                                'isHardwareAccelerated', 'signalEndOfInputStream'))
+                                'isSoftwareOnly', 'MediaCodecList.ALL_CODECS', 'getInputImage',
+                                'getInputBuffer', 'compatibleSize', 'signalEndOfInputStream'))
+legacy_source = src / 'CaptureService.java'
+if legacy_source.exists():
+    raise SystemExit('ERROR: obsolete CaptureService.java from v1. Run: python3 scripts/clean_legacy_sources.py')
 for f in src.glob('*.java'):
     text = f.read_text()
     assert 'setImmersive(' not in text, f'Activity.setImmersive collision: {f.name}'
     assert 'import android.media.projection.' not in text and 'createScreenCaptureIntent' not in text, f.name
-assert not (src/'CaptureService.java').exists()
+workflow = (root / '.github/workflows/build-apk.yml').read_text()
+assert workflow.index('scripts/clean_legacy_sources.py') < workflow.index('python3 validate_project.py'), 'Legacy cleanup must run before validation'
 print('OK Java features + removed old capture service')
 
 html = (root/'app/src/main/assets/payment_demo.html').read_text()
 assert '<!DOCTYPE html>' in html and 'function start10SecPayment()' in html
 assert len(html.encode()) < 1024 * 1024
 print('OK demo HTML')
-print('\nPre-build checks passed; GitHub Actions must still compile and a phone must test recording.')
+print('\nPre-build checks passed; GitHub Actions must still compile and a phone must test MP4 exports.')
