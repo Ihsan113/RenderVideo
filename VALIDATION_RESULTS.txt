@@ -1,0 +1,20 @@
+OK .github/workflows/build-apk.yml
+OK settings.gradle
+OK build.gradle
+OK app/build.gradle
+OK app/src/main/AndroidManifest.xml
+OK app/src/main/assets/payment_demo.html
+OK app/src/main/res/values/styles.xml
+OK app/src/main/res/drawable/ic_launcher_logo.xml
+OK app/src/main/res/drawable/ic_logo_small.xml
+OK app/src/main/java/id/danzku/renderify/MainActivity.java
+OK app/src/main/java/id/danzku/renderify/RenderActivity.java
+OK app/src/main/java/id/danzku/renderify/GpuFrameEncoder.java
+OK app/src/main/java/id/danzku/renderify/FrameRenderEngine.java
+OK app/src/main/java/id/danzku/renderify/Ui.java
+OK Android XML
+OK offline and no-screen-capture permissions
+OK Java features + removed old capture service
+OK demo HTML
+
+Pre-build checks passed; GitHub Actions must still compile and a phone must test recording.

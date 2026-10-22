@@ -35,6 +35,8 @@ public class MainActivity extends Activity {
     private TextView fileLabel, statusLabel;
     private int selectedQuality = 720;
     private int selectedFps = 30;
+    private String selectedRatio = "9:16";
+    private String selectedEncoder = "auto";
     private String originalFileName = "Contoh bawaan";
 
     @Override public void onCreate(Bundle savedInstanceState) {
@@ -83,9 +85,9 @@ public class MainActivity extends Activity {
         hero.addView(Ui.text(this, "Wujudkan animasi HTML\nmenjadi video MP4.", 25, Ui.WHITE, true));
         hero.addView(Ui.spacer(this, 10));
         hero.addView(Ui.text(this,
-                "Tempel kode atau pilih file HTML, lihat preview, lalu render langsung di HP.", 13, Ui.MUTED, false));
+                "Tempel kode atau pilih file HTML, lihat preview, lalu ekspor MP4 lewat GPU lokal.", 13, Ui.MUTED, false));
         hero.addView(Ui.spacer(this, 13));
-        TextView chip = Ui.text(this, "  HTML + CSS + JavaScript      •      MP4 / H.264  ", 11, Ui.CYAN, true);
+        TextView chip = Ui.text(this, "  HTML / CSS / JS      •      GPU / H.264 MP4  ", 11, Ui.CYAN, true);
         hero.addView(chip);
         page.addView(hero);
         page.addView(Ui.spacer(this, 22));
@@ -167,9 +169,19 @@ public class MainActivity extends Activity {
         settings.addView(Ui.spacer(this, 8));
         settings.addView(qualityButtons());
         settings.addView(Ui.spacer(this, 15));
+        settings.addView(Ui.text(this, "Rasio video", 14, Ui.WHITE, true));
+        settings.addView(Ui.spacer(this, 8));
+        settings.addView(ratioButtons());
+        settings.addView(Ui.spacer(this, 15));
         settings.addView(Ui.text(this, "Frame rate", 14, Ui.WHITE, true));
         settings.addView(Ui.spacer(this, 8));
         settings.addView(fpsButtons());
+        settings.addView(Ui.spacer(this, 15));
+        settings.addView(Ui.text(this, "Mode encoder", 14, Ui.WHITE, true));
+        settings.addView(Ui.spacer(this, 8));
+        settings.addView(encoderButtons());
+        settings.addView(Ui.spacer(this, 6));
+        settings.addView(Ui.text(this, "Auto memprioritaskan hardware lalu beralih ke software jika tersedia.", 11, Ui.MUTED, false));
         settings.addView(Ui.spacer(this, 15));
         settings.addView(Ui.text(this, "JavaScript pemicu animasi (opsional)", 14, Ui.WHITE, true));
         settings.addView(Ui.spacer(this, 7));
@@ -187,11 +199,11 @@ public class MainActivity extends Activity {
         page.addView(render, Ui.lp(this, -1, 60));
         render.setOnClickListener(v -> startRender());
         page.addView(Ui.spacer(this, 9));
-        statusLabel = Ui.text(this, "Izin rekam layar akan diminta oleh Android sebelum render.", 11, Ui.MUTED, false);
+        statusLabel = Ui.text(this, "Render lokal tanpa izin rekam layar • Jaga aplikasi tetap aktif.", 11, Ui.MUTED, false);
         statusLabel.setGravity(Gravity.CENTER);
         page.addView(statusLabel);
         page.addView(Ui.spacer(this, 14));
-        TextView footer = Ui.text(this, "Renderify 1.0  •  Danzku Studio\nVideo tersimpan di Movies/Renderify", 11, Ui.MUTED, false);
+        TextView footer = Ui.text(this, "Renderify 2.0  •  Danzku Studio\nVideo tersimpan di Movies/Renderify", 11, Ui.MUTED, false);
         footer.setGravity(Gravity.CENTER);
         page.addView(footer);
     }
@@ -211,7 +223,7 @@ public class MainActivity extends Activity {
 
     private View qualityButtons() {
         LinearLayout row = Ui.horizontal(this);
-        String[] labels = {"540p  •  Hemat", "720p", "1080p"};
+        String[] labels = {"540p", "720p", "1080p"};
         int[] values = {540, 720, 1080};
         Button[] bs = new Button[3];
         for (int i = 0; i < 3; i++) {
@@ -230,16 +242,61 @@ public class MainActivity extends Activity {
         return row;
     }
 
+    private View ratioButtons() {
+        LinearLayout row = Ui.horizontal(this);
+        String[] names = {"9:16", "16:9", "1:1"};
+        Button[] buttons = new Button[names.length];
+        for (int i = 0; i < names.length; i++) {
+            final int idx = i;
+            buttons[i] = Ui.button(this, names[i], i == 0);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 46), 1);
+            if (i > 0) lp.setMargins(Ui.dp(this, 6), 0, 0, 0);
+            row.addView(buttons[i], lp);
+            buttons[i].setOnClickListener(v -> {
+                selectedRatio = names[idx];
+                for (int j = 0; j < buttons.length; j++) setSelected(buttons[j], j == idx);
+            });
+        }
+        return row;
+    }
+
     private View fpsButtons() {
         LinearLayout row = Ui.horizontal(this);
-        Button a = Ui.button(this, "24 FPS  •  Hemat", false);
-        Button b = Ui.button(this, "30 FPS  •  Halus", true);
-        LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, Ui.dp(this, 45), 1);
-        left.setMargins(0, 0, Ui.dp(this, 7), 0);
-        row.addView(a, left);
-        row.addView(b, new LinearLayout.LayoutParams(0, Ui.dp(this, 45), 1));
-        a.setOnClickListener(v -> { selectedFps = 24; setSelected(a, true); setSelected(b, false); });
-        b.setOnClickListener(v -> { selectedFps = 30; setSelected(a, false); setSelected(b, true); });
+        String[] labels = {"24 FPS", "30 FPS", "60 FPS"};
+        int[] values = {24, 30, 60};
+        Button[] buttons = new Button[3];
+        for (int i = 0; i < 3; i++) {
+            final int idx = i;
+            buttons[i] = Ui.button(this, labels[i], i == 1);
+            buttons[i].setTextSize(12);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 46), 1);
+            if (i > 0) lp.setMargins(Ui.dp(this, 6), 0, 0, 0);
+            row.addView(buttons[i], lp);
+            buttons[i].setOnClickListener(v -> {
+                selectedFps = values[idx];
+                for (int j = 0; j < buttons.length; j++) setSelected(buttons[j], j == idx);
+            });
+        }
+        return row;
+    }
+
+    private View encoderButtons() {
+        LinearLayout row = Ui.horizontal(this);
+        String[] labels = {"Auto", "Hardware", "Software"};
+        String[] modes = {"auto", "hardware", "software"};
+        Button[] buttons = new Button[3];
+        for (int i = 0; i < 3; i++) {
+            final int idx = i;
+            buttons[i] = Ui.button(this, labels[i], i == 0);
+            buttons[i].setTextSize(11);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 46), 1);
+            if (i > 0) lp.setMargins(Ui.dp(this, 6), 0, 0, 0);
+            row.addView(buttons[i], lp);
+            buttons[i].setOnClickListener(v -> {
+                selectedEncoder = modes[idx];
+                for (int j = 0; j < buttons.length; j++) setSelected(buttons[j], j == idx);
+            });
+        }
         return row;
     }
 
@@ -319,6 +376,8 @@ public class MainActivity extends Activity {
             intent.putExtra(RenderActivity.EXTRA_FPS, selectedFps);
             intent.putExtra(RenderActivity.EXTRA_QUALITY, selectedQuality);
             intent.putExtra(RenderActivity.EXTRA_SCRIPT, scriptInput.getText().toString());
+            intent.putExtra(RenderActivity.EXTRA_RATIO, selectedRatio);
+            intent.putExtra(RenderActivity.EXTRA_ENCODER, selectedEncoder);
             startActivity(intent);
         } catch (Exception error) { notifyError(error); }
     }

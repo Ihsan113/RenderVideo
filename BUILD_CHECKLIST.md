@@ -1,20 +1,16 @@
-# Checklist verifikasi
+# Build and verification — Renderify 2.0
 
-## Struktur (bisa diverifikasi dari arsip)
-- [x] Repo berisi workflow GitHub Actions `build-apk.yml`
-- [x] Gradle Android Application + minSdk 29 / targetSdk 35
-- [x] Java source aplikasi Android native lengkap
-- [x] AndroidManifest service mediaProjection & permissions terkait
-- [x] Editor teks HTML, pilih file SAF, preview WebView
-- [x] Pengaturan durasi, FPS, bitrate/resolusi, JS trigger
-- [x] Simpan MP4 ke MediaStore, opsi putar & bagikan
-- [x] HTML contoh dan logo aplikasi
-- [x] Tidak ada kebutuhan API key / backend
+1. `python3 validate_project.py` — structural checks (not a compiler).
+2. `gradle --no-daemon assembleDebug` — GitHub Actions compiles APK.
+3. Android device: paste HTML, import `.html`, preview, render payment demo.
+4. Confirm **no** screen recording / MediaProjection consent dialog appears.
+5. Confirm `Movies/Renderify/Renderify_*.mp4` is a playable H.264 MP4 with
+   requested nominal duration and dimension; inspect orientation 9:16/16:9/1:1.
+6. Test 24, 30, 60 FPS and 540p/720p/1080p on a representative device.
+7. Test Auto, Hardware and Software codec selections. Some combinations may
+   fail cleanly if no suitable surface-input encoder is present.
+8. Test slow device / CSS transforms / Canvas / WebGL / fonts / offline assets.
+9. Test Back and Home during export; no unfinished MP4 should remain.
+10. If Gradle or device errors occur, capture exact logs and fix before release.
 
-## Masih memerlukan verifikasi nyata
-- [ ] GitHub Actions `assembleDebug` sukses pada repository pengguna
-- [ ] APK terpasang di perangkat Android pengguna
-- [ ] Permission capture dan render H.264 bekerja pada ROM/perangkat pengguna
-- [ ] Uji video 10 detik dan kompatibilitas pemutar video
-
-Proyek disiapkan dan diperiksa secara statis. Lingkungan pembuat arsip tidak menyediakan Android SDK/Gradle beserta koneksi download dependensi sehingga **APK tidak diklaim sudah dikompilasi**. Jalankan workflow GitHub Actions untuk uji kompilasi sebenarnya.
+CI cannot prove on-device PixelCopy, OpenGL, and hardware encoder compatibility.
